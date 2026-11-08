@@ -129,3 +129,10 @@ dist
 .yarn/install-state.gz
 .pnp.*
 .DS_Store
+.venv/
+__pycache__/
+*.pyc
+*.bak
+*.working
+*.before-h264
+*.before-log-redaction

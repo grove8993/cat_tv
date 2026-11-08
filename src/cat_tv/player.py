@@ -169,9 +169,22 @@ class VideoPlayer:
             else:
                 raise ValueError(f"Unknown player backend: {self.backend}")
             
-            # Log the full command for debugging
-            logger.info(f"Running VLC command: {' '.join(cmd)}")
-            logger.info(f"URL length: {len(url)} characters")
+            # Log playback configuration without exposing signed stream URLs
+            safe_cmd = []
+
+            for arg in cmd:
+                if arg.startswith("--audio-file="):
+                    safe_cmd.append("--audio-file=[REDACTED]")
+                elif arg.startswith("http://") or arg.startswith("https://"):
+                    safe_cmd.append("[STREAM-URL-REDACTED]")
+                else:
+                    safe_cmd.append(arg)
+
+            logger.info(f"Running player command: {' '.join(safe_cmd)}")
+            if isinstance(url, dict):
+                logger.info("Using separate video and audio stream URLs")
+            else:
+                logger.info(f"URL length: {len(url)} characters")
             
             self.current_process = subprocess.Popen(
                 cmd,
@@ -434,7 +447,7 @@ class VideoPlayer:
         cmd.append(url)
         return cmd
     
-    def _get_mpv_command(self, url: str) -> list:
+    def _get_mpv_command(self, url) -> list:
         """Get MPV command for CLI playback."""
         cmd = [
             "mpv",
@@ -443,21 +456,34 @@ class VideoPlayer:
             "--no-osc",
             "--no-input-cursor",
         ]
-        
+
         if config.IS_RASPBERRY_PI:
-            # Use DRM/KMS for direct framebuffer access
             cmd.extend([
                 "--vo=gpu",
                 "--gpu-context=drm",
-                "--drm-connector=HDMI-A-1"
+                "--drm-connector=HDMI-A-1",
             ])
-        
+
         if config.AUDIO_OUTPUT == "hdmi":
-            cmd.extend(["--audio-device", "alsa/hdmi"])
+            cmd.extend([
+                "--audio-device=alsa/plughw:1,0",
+            ])
         elif config.AUDIO_OUTPUT == "local":
-            cmd.extend(["--audio-device", "alsa/default"])
-            
-        cmd.append(url)
+            cmd.extend([
+                "--audio-device=alsa/default",
+            ])
+
+        if isinstance(url, dict):
+            video_url = url.get("video")
+            audio_url = url.get("audio")
+
+            if audio_url:
+                cmd.append(f"--audio-file={audio_url}")
+
+            cmd.append(video_url)
+        else:
+            cmd.append(url)
+
         return cmd
     
     def _monitor_stderr(self, process: subprocess.Popen):

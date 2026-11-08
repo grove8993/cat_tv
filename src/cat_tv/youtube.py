@@ -151,28 +151,56 @@ class YouTubeManager:
             logger.error(f"Failed to get channel videos: {e}")
             return []
     
-    def get_stream_url(self, video_url: str) -> Optional[str]:
-        """Extract the actual stream URL from a YouTube video."""
+    def get_stream_url(self, video_url: str):
+        """Extract separate video and audio stream URLs from YouTube."""
         try:
-            with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
+            opts = {
+                **self.ydl_opts,
+                'format': 'bestvideo[vcodec^=avc1][height<=720][fps<=30]+bestaudio/best[vcodec^=avc1][height<=720]',
+            }
+
+            with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(video_url, download=False)
-                
-                # Get the best format URL
-                if 'url' in info:
-                    return info['url']
-                elif 'formats' in info:
-                    # Find best format with both video and audio
-                    for fmt in reversed(info['formats']):
-                        if fmt.get('acodec') != 'none' and fmt.get('vcodec') != 'none':
-                            return fmt['url']
-                    # Fallback to any format with URL
-                    for fmt in info['formats']:
-                        if 'url' in fmt:
-                            return fmt['url']
-                            
-                logger.warning(f"No stream URL found for: {video_url}")
+
+                requested = info.get('requested_formats')
+
+                if requested and len(requested) >= 2:
+                    video = next(
+                        (f for f in requested if f.get('vcodec') != 'none'),
+                        None
+                    )
+                    audio = next(
+                        (f for f in requested if f.get('acodec') != 'none'),
+                        None
+                    )
+
+                    if video and audio:
+                        logger.info(
+                            f"Selected video format {video.get('format_id')} "
+                            f"+ audio format {audio.get('format_id')}"
+                        )
+                        return {
+                            'video': video.get('url'),
+                            'audio': audio.get('url'),
+                        }
+
+                # Fallback for a combined A/V format
+                if (
+                    info.get('url')
+                    and info.get('vcodec') != 'none'
+                    and info.get('acodec') != 'none'
+                ):
+                    logger.info(
+                        f"Selected combined format {info.get('format_id')}"
+                    )
+                    return {
+                        'video': info.get('url'),
+                        'audio': None,
+                    }
+
+                logger.warning(f"No playable stream found for: {video_url}")
                 return None
-                
+
         except Exception as e:
             logger.error(f"Failed to get stream URL: {e}")
             return None
