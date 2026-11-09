@@ -66,14 +66,14 @@ Reconnect using SSH afterward.
 Install Git, curl, FFmpeg, MPV, ALSA utilities, and supporting packages:
 ```shell
 sudo apt update
-sudo apt install -y </span>
-  git </span>
-  curl </span>
-  unzip </span>
-  ffmpeg </span>
-  mpv </span>
-  alsa-utils </span>
-  python3 </span>
+sudo apt install -y /
+  git /
+  curl /
+  unzip /
+  ffmpeg /
+  mpv /
+  alsa-utils /
+  python3 /
   python3-venv
 ```
 Verify:
@@ -81,6 +81,7 @@ Verify:
 ffmpeg -version
 mpv --version
 aplay --version
+```
 
 ### 5. Install uv
 Install the Python uv package manager:
@@ -165,10 +166,7 @@ At minimum, configure:
 PLAYER_BACKEND=mpv
 AUDIO_OUTPUT=hdmi
 ```
-The web interface defaults to port:
-```plain text
-5000
-```
+The web interface defaults to port 5000.
 A YouTube API key is optional but can improve search functionality.
 
 ### 11. Verify the HDMI audio device
