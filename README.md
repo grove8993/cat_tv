@@ -1,227 +1,335 @@
-# Cat TV 2.0 - Raspberry Pi YouTube Entertainment System
+# Cat TV for Raspberry Pi
 
-An automated YouTube video player for Raspberry Pi that plays cat entertainment videos during specified times of day. Features a web interface for easy management of channels and schedules.
+An automated Cat TV system that plays YouTube bird, squirrel, fish, and other cat-entertainment videos on a television according to a configurable daily schedule.
+
+This version is based on Cat TV 2.0 and adds support for current YouTube playback using yt-dlp, Deno, yt-dlp-ejs, separate video/audio streams, MPV, direct DRM/KMS video output, and ALSA HDMI audio. The original project provides the scheduling, web interface, fallback videos, playback history, and systemd service architecture. [github.com]
 
 ## Features
+- Automatic scheduled Cat TV playback
+- Web-based control interface
+- Automatic YouTube search
+- Multiple fallback videos
+- Current yt-dlp YouTube extraction
+- Deno JavaScript challenge support
+- Separate YouTube video and audio stream handling
+- MPV playback
+- Direct DRM/KMS fullscreen HDMI output
+- Direct ALSA HDMI audio
+- Raspberry Pi 3-friendly H.264 video selection
+- Runs without a graphical desktop
+- Automatic startup using systemd
+- Stream URLs redacted from application logs
 
-- **CLI-First Design**: Runs without desktop environment for maximum reliability
-- **Web Interface**: Manage channels and schedules from any device on your network
-- **Automatic Scheduling**: Play videos only during specified hours
-- **Video Rotation**: Prevents screen burn-in by rotating between channels
-- **Fallback Videos**: Automatically finds alternative videos if channels fail
-- **Logging**: Comprehensive logging for debugging and monitoring
-- **Auto-Recovery**: Automatically recovers from errors and network issues
+## Tested Hardware
+This configuration has been tested on:
+- Raspberry Pi 3 Model B Rev 1.2
+- HDMI television
+- Raspberry Pi OS Lite / Debian Trixie
+- 64-bit ARM (aarch64)
+A wired Ethernet connection is recommended for long-duration YouTube streaming, although Wi-Fi can also be used.
 
-## Requirements
+## Installation
+### 1. Install Raspberry Pi OS Lite
+Use Raspberry Pi Imager to install Raspberry Pi OS Lite onto a microSD card. Raspberry Pi recommends Imager for installing Raspberry Pi OS, whose current generation is based on Debian Trixie. [raspberrypi.com]
+During imaging, configure:
+- hostname, for example raspberrypi
+- username and password
+- Wi-Fi, if required
+- SSH access
+- locale and timezone
+SSH provides remote terminal access to the Raspberry Pi over your local network. [raspberrypi.com]
+Connect the television to the Pi using HDMI.
+Boot the Raspberry Pi.
 
-- Raspberry Pi (any model with HDMI output)
-- Raspberry Pi OS (Lite recommended)
-- Internet connection
-- HDMI display/TV
-- Python 3.9+
+### 2. Connect using SSH
+Find the Raspberry Pi IP address from your router or locally with:
+```shell
+hostname -I
+```
+Then connect from another computer:
+```shell
+ssh YOUR-USERNAME@RASPBERRY-PI-IP
+```
 
-## Quick Installation
+### 3. Update Raspberry Pi OS
+```shell
+sudo apt update
+sudo apt full-upgrade -y
+```
+Reboot if required:
+```shell
+sudo reboot
+```
+Reconnect using SSH afterward.
 
-1. **SSH into your Raspberry Pi** or open a terminal
+### 4. Install required system packages
+Install Git, curl, FFmpeg, MPV, ALSA utilities, and supporting packages:
+```shell
+sudo apt update
+sudo apt install -y </span>
+  git </span>
+  curl </span>
+  unzip </span>
+  ffmpeg </span>
+  mpv </span>
+  alsa-utils </span>
+  python3 </span>
+  python3-venv
+```
+Verify:
+```shell
+ffmpeg -version
+mpv --version
+aplay --version
 
-2. **Clone the repository**:
-```bash
-git clone https://github.com/yourusername/cat_tv.git
+### 5. Install uv
+Install the Python uv package manager:
+```shell
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+Reload the shell:
+```shell
+source ~/.bashrc
+```
+Verify:
+```shell
+uv --version
+```
+
+### 6. Clone Cat TV
+```shell
+cd ~
+git clone https://github.com/grove8993/cat_tv.git
 cd cat_tv
 ```
 
-3. **Run the installer**:
-```bash
+### 7. Install Python dependencies
+```shell
+uv sync
+```
+Verify yt-dlp:
+```shell
+uv run yt-dlp --version
+```
+
+## YouTube support
+Modern YouTube extraction requires JavaScript challenge processing. This project uses:
+- yt-dlp
+- yt-dlp-ejs
+- Deno
+The current yt-dlp EJS architecture supports Deno as the recommended JavaScript runtime.
+
+### 8. Install Deno
+Install Deno using the official Linux installer:
+```shell
+curl -fsSL https://deno.land/install.sh | sh
+```
+Add it to the current shell:
+```shell
+export PATH="$HOME/.deno/bin:$PATH"
+```
+Verify:
+```shell
+deno --version
+```
+Deno supports Linux ARM64 and the official documentation recommends its shell installer for current Linux installations. [docs.deno.com]
+
+### 9. Verify EJS support
+From the Cat TV directory:
+```shell
+uv run python -c "import yt_dlp_ejs; print('yt-dlp-ejs installed')"
+```
+Expected:
+```plain text
+yt-dlp-ejs installed
+```
+Then verify yt-dlp detects Deno:
+```shell
+uv run yt-dlp -v -g "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+Near the beginning of the output, look for:
+```plain text
+yt_dlp_ejs
+JS runtimes: deno
+JS Challenge Providers: ... deno
+```
+
+## Cat TV configuration
+### 10. Create .env
+```shell
+cp .env.example .env
+nano .env
+```
+At minimum, configure:
+```shell
+PLAYER_BACKEND=mpv
+AUDIO_OUTPUT=hdmi
+```
+The web interface defaults to port:
+```plain text
+5000
+```
+A YouTube API key is optional but can improve search functionality.
+
+### 11. Verify the HDMI audio device
+Run:
+```shell
+aplay -l
+```
+On the tested Raspberry Pi 3 configuration, HDMI appeared as:
+```plain text
+card 1: vc4hdmi
+device 0: MAI PCM i2s-hifi-0
+```
+Test HDMI audio:
+```shell
+speaker-test -D hw:1,0 -c 2 -t sine
+```
+Stop with Ctrl+C.
+If your HDMI device is not 1,0, adjust the MPV ALSA device configuration accordingly.
+
+## Raspberry Pi 3 video configuration
+The Raspberry Pi 3 does not handle modern high-resolution AV1 YouTube formats well.
+This project therefore prefers:
+- H.264 / AVC
+- 720p or lower
+- 30 FPS or lower
+The yt-dlp format selector used by this version is designed around:
+```plain text
+bestvideo[vcodec^=avc1][height<=720][fps<=30]+bestaudio
+```
+This avoids formats such as YouTube AV1 format 401, which produced severely incorrect video rendering on the tested Raspberry Pi 3.
+
+## Install the systemd service
+### 12. Run the application's installer/service setup
+```shell
 chmod +x install.sh
 ./install.sh
 ```
-
-4. **Configure environment** (optional):
-```bash
-cp .env.example .env
-nano .env  # Add YouTube API key for better search results
+The original Cat TV project provides automated installation and systemd operation. [github.com]
+Ensure the service can find Deno.
+Run:
+```shell
+sudo systemctl edit cat-tv
 ```
-
-5. **Start the service**:
-```bash
-sudo systemctl start cat-tv
+Add:
+```ini
+[Service]
+Environment=DISPLAY=
+Environment="PATH=/home/YOUR-USERNAME/.deno/bin:/home/YOUR-USERNAME/.local/bin:/usr/local/bin:/usr/bin:/bin"
+SupplementaryGroups=video render audio
 ```
-
-## Manual Installation
-
-### 1. Install System Dependencies
-
-```bash
-sudo apt-get update
-sudo apt-get install -y vlc python3-pip python3-venv git curl
-```
-
-### 2. Install UV Package Manager
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-### 3. Install Python Dependencies
-
-```bash
-uv sync
-```
-
-### 4. Configure Environment
-
-```bash
-cp .env.example .env
-# Edit .env with your settings
-```
-
-### 5. Initialize Database
-
-```bash
-uv run python -c "from src.cat_tv.models import init_db; init_db()"
-```
-
-### 6. Install Systemd Service
-
-```bash
-sudo cp systemd/cat-tv.service /etc/systemd/system/
+Replace YOUR-USERNAME with the Linux account running Cat TV.
+Then:
+```shell
 sudo systemctl daemon-reload
 sudo systemctl enable cat-tv
+sudo systemctl restart cat-tv
 ```
 
-## Configuration
-
-### Configure Raspberry Pi for CLI Boot
-
-For best performance, configure your Pi to boot directly to CLI:
-
-```bash
-sudo raspi-config
+### 13. Verify Cat TV
+```shell
+sudo systemctl status cat-tv --no-pager
 ```
-Navigate to: `System Options > Boot / Auto Login > Console Autologin`
-
-### Environment Variables
-
-Edit `.env` file to configure:
-
-- `YOUTUBE_API_KEY`: Optional, for better search results
-- `PLAYER_BACKEND`: Choose between `vlc`, `omxplayer`, or `mpv`
-- `AUDIO_OUTPUT`: Set to `hdmi`, `local`, or `both`
-- `FLASK_PORT`: Web interface port (default: 5000)
-
-## Usage
-
-### Web Interface
-
-Access the web interface at:
+Expected:
+```plain text
+Active: active (running)
 ```
-http://[raspberry-pi-ip]:5000
-```
-
-Features:
-- **Dashboard**: View current status and control playback
-- **Channels**: Add YouTube channels or search queries
-- **Schedules**: Set when videos should play
-- **History**: View playback history
-
-### Command Line
-
-Start the complete Cat TV application (includes scheduler + web interface):
-```bash
-uv run cat-tv
-```
-
-### Systemd Commands
-
-```bash
-# Start service
-sudo systemctl start cat-tv
-
-# Stop service
-sudo systemctl stop cat-tv
-
-# View logs
+Watch logs:
+```shell
 journalctl -u cat-tv -f
-
-# Check status
-sudo systemctl status cat-tv
 ```
 
-## Default Schedule
+## Web interface
+Determine the Raspberry Pi's address:
+```shell
+hostname -I
+```
+Then open:
+```plain text
+http://RASPBERRY-PI-IP:5000
+```
+For example:
+```plain text
+http://192.168.1.100:5000
+```
+The original Cat TV web application provides Dashboard, Channels, Schedules, and History functionality. [github.com]
 
-By default, Cat TV plays videos:
-- **Morning**: 7:00 AM - 11:00 AM
-- **Evening**: 5:00 PM - 8:00 PM
-
-Modify these times through the web interface.
-
-## Default Channels
-
-The system comes with pre-configured channels for cat entertainment:
-1. Cat TV - Birds and Squirrels (4K)
-2. Cat TV - Mice and Games
-3. Paul Dinning Wildlife
-
-Add your own channels through the web interface!
+## Configure the schedule
+Use the web interface to define when Cat TV should play.
+The original application's default schedule is:
+- Morning: 7:00 AM - 11:00 AM
+- Evening: 5:00 PM - 8:00 PM
+These times can be changed from the web interface. [github.com]
+Verify the Pi timezone:
+```shell
+timedatectl
+```
+Change it if necessary, for example:
+```shell
+sudo timedatectl set-timezone America/Chicago
+```
 
 ## Troubleshooting
-
-
-### Videos won't play
-- Check VLC is installed: `which cvlc`
-- Verify internet connection: `ping youtube.com`
-- Check logs: `journalctl -u cat-tv -n 50`
-
-### Web interface not accessible
-- Check firewall: `sudo ufw allow 5000`
-- Verify service is running: `sudo systemctl status cat-tv`
-- Check IP address: `hostname -I`
-
-### No audio
-- Check audio output setting in `.env`
-- Test audio: `speaker-test -t wav -c 2`
-- For HDMI: `sudo raspi-config` > Advanced Options > Audio > Force HDMI
-
-## Development
-
-### Project Structure
+### Check the service
+```shell
+sudo systemctl status cat-tv --no-pager -l
 ```
-cat_tv/
-├── src/cat_tv/
-│   ├── __init__.py
-│   ├── main.py           # Main scheduler entry point
-│   ├── web.py            # Flask web interface
-│   ├── config.py         # Configuration management
-│   ├── player.py         # Video player control
-│   ├── youtube.py        # YouTube integration
-│   ├── scheduler.py      # Schedule management
-│   ├── models/           # Database models
-│   └── templates/        # Web interface templates
-├── systemd/              # Service files
-├── data/                 # Database and local data
-├── logs/                 # Log files
-└── pyproject.toml        # Project configuration
+### Follow logs
+```shell
+journalctl -u cat-tv -f
+```
+### Check port 5000
+```shell
+sudo ss -ltnp | grep :5000
+```
+### Test the web server locally
+```shell
+curl -I http://localhost:5000
+```
+### Check HDMI audio
+```shell
+aplay -l
+```
+### Check DRM devices
+```shell
+ls -l /dev/dri/
+```
+The Cat TV account should have video, render, and audio access:
+```shell
+groups
 ```
 
-### Running Tests
-```bash
-uv run pytest
+## Important notes for Raspberry Pi 3
+Avoid allowing yt-dlp to automatically choose the highest-resolution video.
+Formats such as:
+- 4K
+- 60 FPS
+- AV1
+- HDR
+are inappropriate targets for a Raspberry Pi 3.
+For this hardware, the recommended playback target is:
+- H.264
+- ≤720p
+- ≤30 FPS
+This provides much more reliable decoding and correct color reproduction.
+
+## Security and logging
+Temporary Google/YouTube playback URLs are signed URLs and should not be written verbatim to persistent logs.
+This version redacts player URLs and instead logs entries such as:
+- Selected video format XXX + audio format XXX
+- Running player command: mpv ... --audio-file=[REDACTED] [STREAM-URL-REDACTED]
+
+## Updating
+Before updating the project, take a working backup:
+```shell
+cd ~
+cp -a cat_tv cat_tv.backup
 ```
+Then inspect upstream changes before merging them.
+Because YouTube and yt-dlp behavior changes over time, upgrades to yt-dlp, yt-dlp-ejs, Deno, MPV, or the player selection logic should be tested before deploying them to an unattended Cat TV.
 
-### Contributing
-
-Pull requests welcome! Please ensure:
-- Code follows existing style
-- Tests pass
-- Documentation is updated
-
-## License
-
-MIT License - See LICENSE file for details
-
-## Acknowledgments
-
-- Original Node.js version for inspiration
-- yt-dlp for YouTube video extraction
-- Flask for the web framework
-- VLC for reliable video playback
+## Credits
+Based on the original Cat TV 2.0 project by Jeff Crouse. [github.com]
+This fork adds changes needed for current YouTube playback and Raspberry Pi 3 compatibility, including Deno/EJS challenge solving, MPV, separate audio/video streams, H.264 selection, direct HDMI audio, and safer stream logging.
+The original project is distributed under the MIT License. [github.com]
