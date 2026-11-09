@@ -30,15 +30,15 @@ A wired Ethernet connection is recommended for long-duration YouTube streaming, 
 
 ## Installation
 ### 1. Install Raspberry Pi OS Lite
-Use Raspberry Pi Imager to install Raspberry Pi OS Lite onto a microSD card. Raspberry Pi recommends Imager for installing Raspberry Pi OS, whose current generation is based on Debian Trixie. [raspberrypi.com]
+Use Raspberry Pi Imager to install Raspberry Pi OS Lite onto a microSD card. Raspberry Pi recommends Imager for installing Raspberry Pi OS, whose current generation is based on Debian Trixie. [raspberrypi.com]  
 During imaging, configure:
 - hostname, for example raspberrypi
 - username and password
 - Wi-Fi, if required
 - SSH access
 - locale and timezone
-SSH provides remote terminal access to the Raspberry Pi over your local network. [raspberrypi.com]
-Connect the television to the Pi using HDMI.
+SSH provides remote terminal access to the Raspberry Pi over your local network. [raspberrypi.com]  
+Connect the television to the Pi using HDMI.  
 Boot the Raspberry Pi.
 
 ### 2. Connect using SSH
@@ -166,7 +166,7 @@ At minimum, configure:
 PLAYER_BACKEND=mpv
 AUDIO_OUTPUT=hdmi
 ```
-The web interface defaults to port 5000.
+The web interface defaults to port 5000.  
 A YouTube API key is optional but can improve search functionality.
 
 ### 11. Verify the HDMI audio device
@@ -183,11 +183,11 @@ Test HDMI audio:
 ```shell
 speaker-test -D hw:1,0 -c 2 -t sine
 ```
-Stop with Ctrl+C.
+Stop with Ctrl+C.  
 If your HDMI device is not 1,0, adjust the MPV ALSA device configuration accordingly.
 
 ## Raspberry Pi 3 video configuration
-The Raspberry Pi 3 does not handle modern high-resolution AV1 YouTube formats well.
+The Raspberry Pi 3 does not handle modern high-resolution AV1 YouTube formats well.  
 This project therefore prefers:
 - H.264 / AVC
 - 720p or lower
@@ -204,8 +204,8 @@ This avoids formats such as YouTube AV1 format 401, which produced severely inco
 chmod +x install.sh
 ./install.sh
 ```
-The original Cat TV project provides automated installation and systemd operation. [github.com]
-Ensure the service can find Deno.
+The original Cat TV project provides automated installation and systemd operation. [github.com]  
+Ensure the service can find Deno.  
 Run:
 ```shell
 sudo systemctl edit cat-tv
@@ -217,7 +217,7 @@ Environment=DISPLAY=
 Environment="PATH=/home/YOUR-USERNAME/.deno/bin:/home/YOUR-USERNAME/.local/bin:/usr/local/bin:/usr/bin:/bin"
 SupplementaryGroups=video render audio
 ```
-Replace YOUR-USERNAME with the Linux account running Cat TV.
+Replace YOUR-USERNAME with the Linux account running Cat TV.  
 Then:
 ```shell
 sudo systemctl daemon-reload
@@ -254,11 +254,11 @@ http://192.168.1.100:5000
 The original Cat TV web application provides Dashboard, Channels, Schedules, and History functionality. [github.com]
 
 ## Configure the schedule
-Use the web interface to define when Cat TV should play.
+Use the web interface to define when Cat TV should play.  
 The original application's default schedule is:
 - Morning: 7:00 AM - 11:00 AM
 - Evening: 5:00 PM - 8:00 PM
-These times can be changed from the web interface. [github.com]
+These times can be changed from the web interface. [github.com]  
 Verify the Pi timezone:
 ```shell
 timedatectl
@@ -299,13 +299,13 @@ groups
 ```
 
 ## Important notes for Raspberry Pi 3
-Avoid allowing yt-dlp to automatically choose the highest-resolution video.
+Avoid allowing yt-dlp to automatically choose the highest-resolution video.  
 Formats such as:
 - 4K
 - 60 FPS
 - AV1
 - HDR
-are inappropriate targets for a Raspberry Pi 3.
+are inappropriate targets for a Raspberry Pi 3.  
 For this hardware, the recommended playback target is:
 - H.264
 - ≤720p
@@ -313,7 +313,7 @@ For this hardware, the recommended playback target is:
 This provides much more reliable decoding and correct color reproduction.
 
 ## Security and logging
-Temporary Google/YouTube playback URLs are signed URLs and should not be written verbatim to persistent logs.
+Temporary Google/YouTube playback URLs are signed URLs and should not be written verbatim to persistent logs.  
 This version redacts player URLs and instead logs entries such as:
 - Selected video format XXX + audio format XXX
 - Running player command: mpv ... --audio-file=[REDACTED] [STREAM-URL-REDACTED]
@@ -324,10 +324,10 @@ Before updating the project, take a working backup:
 cd ~
 cp -a cat_tv cat_tv.backup
 ```
-Then inspect upstream changes before merging them.
+Then inspect upstream changes before merging them.  
 Because YouTube and yt-dlp behavior changes over time, upgrades to yt-dlp, yt-dlp-ejs, Deno, MPV, or the player selection logic should be tested before deploying them to an unattended Cat TV.
 
 ## Credits
-Based on the original Cat TV 2.0 project by Jeff Crouse. [github.com]
-This fork adds changes needed for current YouTube playback and Raspberry Pi 3 compatibility, including Deno/EJS challenge solving, MPV, separate audio/video streams, H.264 selection, direct HDMI audio, and safer stream logging.
+Based on the original Cat TV 2.0 project by Jeff Crouse. [github.com]  
+This fork adds changes needed for current YouTube playback and Raspberry Pi 3 compatibility, including Deno/EJS challenge solving, MPV, separate audio/video streams, H.264 selection, direct HDMI audio, and safer stream logging.  
 The original project is distributed under the MIT License. [github.com]
